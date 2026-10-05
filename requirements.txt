@@ -1,0 +1,10 @@
+Flask>=3.0,<4
+Flask-SQLAlchemy>=3.1,<4
+SQLAlchemy>=2.0.30
+Flask-JWT-Extended>=4.6,<5
+Flask-Cors>=4.0
+python-dotenv>=1.0
+Pillow>=10.0
+gunicorn>=21.2 ; platform_system != "Windows"
+pytest>=8.0
+psycopg[binary]>=3.2

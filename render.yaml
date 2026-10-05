@@ -1,0 +1,29 @@
+# Render.com blueprint – creates the PostgreSQL database + the Flask API.
+# (The admin panel lives in ../portfolio-admin and is deployed separately.)
+databases:
+  - name: portfolio-db
+    databaseName: portfolio_cms
+    plan: free
+
+services:
+  - type: web
+    name: portfolio-cms-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python seed.py --admin-only && gunicorn wsgi:app --workers 2 --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: portfolio-db, property: connectionString }
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@portfolio.com
+      - key: ADMIN_PASSWORD
+        sync: false          # set it in the Render dashboard
+      - key: CORS_ORIGINS
+        value: https://your-portfolio.vercel.app,https://your-admin.vercel.app
+      - key: PYTHON_VERSION
+        value: 3.12.4
