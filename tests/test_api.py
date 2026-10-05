@@ -251,3 +251,14 @@ def test_openapi_docs(client):
 
 def test_health(client):
     assert client.get("/api/health").get_json()["database"] == "connected"
+
+
+def test_upload_survives_lost_disk(client, auth, app):
+    """Render's free disk is wiped on restart – files must come back from PostgreSQL."""
+    import os
+    res = client.post("/api/upload/image", headers=auth, content_type="multipart/form-data",
+                      data={"file": (_png_bytes(), "pic.png")})
+    media = res.get_json()["data"]
+    os.remove(os.path.join(app.config["UPLOAD_FOLDER"], media["filename"]))
+    again = client.get(media["url"])
+    assert again.status_code == 200 and again.mimetype == "image/png"

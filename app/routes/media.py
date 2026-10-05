@@ -11,7 +11,7 @@ Media library & uploads.
 import os
 import uuid
 
-from flask import Blueprint, current_app, jsonify, request, send_from_directory
+from flask import Blueprint, Response, abort, current_app, jsonify, request, send_from_directory
 from flask_jwt_extended import get_jwt_identity
 from PIL import Image, UnidentifiedImageError
 
@@ -83,7 +83,10 @@ def _save_upload(kind):
             return None, (jsonify(error="The uploaded file is not a valid PDF"), 400)
         file.save(path)
 
+    with open(path, "rb") as fh:
+        file_bytes = fh.read()
     media = Media(
+        data=file_bytes,
         filename=filename,
         original_name=file.filename[:255],
         mime_type=file.mimetype,
@@ -146,6 +149,20 @@ def delete_media(media_id):
 
 @files_bp.get("/uploads/<path:filename>")
 def serve_upload(filename):
-    resp = send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
+    folder = current_app.config["UPLOAD_FOLDER"]
+    if os.path.isfile(os.path.join(folder, filename)):
+        resp = send_from_directory(folder, filename)
+    else:
+        # Disk copy missing (e.g. server restarted) – serve from the database
+        media = Media.query.filter_by(filename=filename).first()
+        if not media or media.data is None:
+            abort(404, description="File not found")
+        resp = Response(media.data, mimetype=media.mime_type or "application/octet-stream")
+        try:  # restore the disk cache
+            os.makedirs(folder, exist_ok=True)
+            with open(os.path.join(folder, filename), "wb") as fh:
+                fh.write(media.data)
+        except OSError:
+            pass
     resp.headers["Cache-Control"] = "public, max-age=604800"
     return resp

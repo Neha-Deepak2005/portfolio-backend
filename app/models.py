@@ -355,6 +355,9 @@ class Media(db.Model):
     height = db.Column(db.Integer)
     alt_text = db.Column(db.String(255))
     uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    # File bytes are also kept in PostgreSQL, so uploads survive hosts with a
+    # temporary disk (e.g. Render free plan) – the disk copy is just a cache.
+    data = db.deferred(db.Column(db.LargeBinary))
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
     @property

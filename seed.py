@@ -30,6 +30,13 @@ def ensure_database(url):
 
     parsed = urlparse(url.replace("postgresql+psycopg://", "postgresql://"))
     db_name = parsed.path.lstrip("/")
+    # Already reachable? (always true on hosted databases like Render)
+    try:
+        psycopg.connect(url.replace("postgresql+psycopg://", "postgresql://"), connect_timeout=10).close()
+        print(f"✔ Database '{db_name}' is reachable")
+        return
+    except psycopg.OperationalError:
+        pass
     try:
         conn = psycopg.connect(dbname="postgres", user=parsed.username,
                                password=parsed.password, host=parsed.hostname or "localhost",
@@ -106,7 +113,7 @@ def make_image(label, index, size=(1200, 750)):
     filename = f"{uuid.uuid4().hex}.png"
     path = os.path.join(folder, filename)
     img.save(path, optimize=True)
-    db.session.add(Media(filename=filename, original_name=f"{label}.png", mime_type="image/png",
+    db.session.add(Media(data=open(path, "rb").read(), filename=filename, original_name=f"{label}.png", mime_type="image/png",
                          size=os.path.getsize(path), width=w, height=h, alt_text=label))
     return f"/uploads/{filename}"
 
@@ -123,7 +130,7 @@ def make_avatar(initials, index):
     filename = f"{uuid.uuid4().hex}.png"
     path = os.path.join(Config.UPLOAD_FOLDER, filename)
     img.save(path, optimize=True)
-    db.session.add(Media(filename=filename, original_name=f"{initials}.png", mime_type="image/png",
+    db.session.add(Media(data=open(path, "rb").read(), filename=filename, original_name=f"{initials}.png", mime_type="image/png",
                          size=os.path.getsize(path), width=s, height=s, alt_text=initials))
     return f"/uploads/{filename}"
 

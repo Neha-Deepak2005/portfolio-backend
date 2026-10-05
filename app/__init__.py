@@ -32,6 +32,10 @@ def create_app(config_class=Config):
         from sqlalchemy.exc import OperationalError
         try:
             db.create_all()
+            # Lightweight migration for databases created by an earlier version
+            from sqlalchemy import text
+            db.session.execute(text("ALTER TABLE media ADD COLUMN IF NOT EXISTS data BYTEA"))
+            db.session.commit()
         except OperationalError as exc:
             raise SystemExit(
                 "\n❌ Cannot connect to PostgreSQL.\n"
